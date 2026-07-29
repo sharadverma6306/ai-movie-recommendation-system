@@ -1,6 +1,8 @@
 import streamlit as st
 import pickle
 import requests
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 # -----------------------------
 # TMDB API Key
@@ -8,27 +10,40 @@ import requests
 API_KEY = "3eef31b027d15939f218d3535b53dda5"
 
 # -----------------------------
-# Load Model
+# Load Movies
 # -----------------------------
 movies = pickle.load(open("model/movies.pkl", "rb"))
-similarity = pickle.load(open("model/similarity.pkl", "rb"))
 
+# -----------------------------
+# Create Similarity Matrix
+# -----------------------------
+@st.cache_resource
+def create_similarity():
+    cv = CountVectorizer(max_features=5000, stop_words="english")
+    vectors = cv.fit_transform(movies["tags"]).toarray()
+    similarity = cosine_similarity(vectors)
+    return similarity
+
+similarity = create_similarity()
 
 # -----------------------------
 # Fetch Poster
 # -----------------------------
 def fetch_poster(movie_id):
-    url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}"
+    try:
+        url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}"
+        response = requests.get(url, timeout=10)
+        data = response.json()
 
-    data = requests.get(url).json()
+        poster_path = data.get("poster_path")
 
-    poster_path = data.get("poster_path")
+        if poster_path:
+            return "https://image.tmdb.org/t/p/w500" + poster_path
 
-    if poster_path:
-        return "https://image.tmdb.org/t/p/w500" + poster_path
+    except:
+        pass
 
     return "https://via.placeholder.com/500x750?text=No+Poster"
-
 
 # -----------------------------
 # Recommendation Function
@@ -41,23 +56,19 @@ def recommend(movie):
 
     movie_list = sorted(
         list(enumerate(distances)),
-        reverse=True,
-        key=lambda x: x[1]
+        key=lambda x: x[1],
+        reverse=True
     )[1:6]
 
     names = []
     posters = []
 
     for i in movie_list:
-
         movie_id = movies.iloc[i[0]].movie_id
-
         names.append(movies.iloc[i[0]].title)
-
         posters.append(fetch_poster(movie_id))
 
     return names, posters
-
 
 # -----------------------------
 # UI
@@ -76,7 +87,6 @@ selected_movie = st.selectbox(
 )
 
 if st.button("Recommend"):
-
     names, posters = recommend(selected_movie)
 
     cols = st.columns(5)

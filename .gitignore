@@ -9,4 +9,3 @@ __pycache__/
 Thumbs.db
 
 dataset/
-model/similarity.pkl
