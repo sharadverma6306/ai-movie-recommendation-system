@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+
+.streamlit/
+.env
+
+.DS_Store
+Thumbs.db
+
+dataset/
+model/similarity.pkl
